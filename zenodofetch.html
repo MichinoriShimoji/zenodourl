@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenodo音声ファイルURL抽出ツール</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .info-box {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .url-input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .url-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .url-input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        
+        .button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+        }
+        
+        .button:hover {
+            background-color: #1976D2;
+        }
+        
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .file-type-selector {
+            margin-top: 15px;
+        }
+        
+        .file-type-selector label {
+            display: inline-block;
+            margin-right: 20px;
+            cursor: pointer;
+        }
+        
+        .file-type-selector input[type="checkbox"] {
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .file-list {
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        
+        .file-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-name {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            flex: 1;
+        }
+        
+        .file-size {
+            font-size: 12px;
+            color: #666;
+            margin-left: 10px;
+        }
+        
+        .url-list {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        
+        .copy-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .copy-button:hover {
+            background-color: #45a049;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            color: #4CAF50;
+        }
+        
+        .status.error {
+            color: #f44336;
+        }
+        
+        .status.warning {
+            color: #ff9800;
+        }
+        
+        .download-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+        }
+        
+        .download-script {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #2d3436;
+            color: #dfe6e9;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        
+        .example-urls {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .example-urls code {
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Zenodo音声ファイルURL抽出ツール</h1>
+        
+        <div class="info-box">
+            <p><strong>使い方：</strong></p>
+            <p>1. ZenodoのレコードURLを入力（例: https://zenodo.org/records/12345678）</p>
+            <p>2. 取得したいファイルタイプを選択</p>
+            <p>3. 「URLを取得」ボタンをクリック</p>
+            <p>4. 生成されたURLリストをコピーして一括ダウンロード</p>
+        </div>
+        
+        <div class="input-section">
+            <div class="url-input-container">
+                <input type="text" 
+                       id="zenodoUrl" 
+                       class="url-input" 
+                       placeholder="https://zenodo.org/records/12345678"
+                       value="">
+                <button class="button" onclick="fetchZenodoFiles()">URLを取得</button>
+            </div>
+            
+            <div class="example-urls">
+                例: 
+                <code>https://zenodo.org/records/16599540</code> または 
+                <code>https://zenodo.org/records/12345678</code>
+            </div>
+            
+            <div class="file-type-selector">
+                <label>
+                    <input type="checkbox" value=".wav" checked> WAVファイル
+                </label>
+                <label>
+                    <input type="checkbox" value=".mp3"> MP3ファイル
+                </label>
+                <label>
+                    <input type="checkbox" value=".flac"> FLACファイル
+                </label>
+                <label>
+                    <input type="checkbox" value=".ogg"> OGGファイル
+                </label>
+                <label>
+                    <input type="checkbox" value=".m4a"> M4Aファイル
+                </label>
+            </div>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="results" id="results" style="display: none;">
+            <h2>音声ファイル一覧</h2>
+            <div class="file-list" id="fileList"></div>
+            <h3>ダウンロードURL一覧</h3>
+            <div class="url-list" id="urlList"></div>
+            <button class="copy-button" onclick="copyToClipboard()">URLリストをコピー</button>
+        </div>
+        
+        <div class="download-section" id="downloadSection" style="display: none;">
+            <h3>一括ダウンロード方法</h3>
+            <p><strong>macOS/Linuxの場合（wgetを使用）：</strong></p>
+            <div class="download-script" id="wgetScript"></div>
+            <button class="copy-button" onclick="copyWgetScript()">wgetスクリプトをコピー</button>
+            
+            <p style="margin-top: 20px;"><strong>Windowsの場合（PowerShellを使用）：</strong></p>
+            <div class="download-script" id="powershellScript"></div>
+            <button class="copy-button" onclick="copyPowerShellScript()">PowerShellスクリプトをコピー</button>
+        </div>
+    </div>
+
+    <script>
+        let urlList = [];
+        let fileData = [];
+
+        function extractRecordId(url) {
+            // 様々なZenodo URLパターンに対応
+            const patterns = [
+                /zenodo\.org\/records?\/(\d+)/i,
+                /zenodo\.org\/record\/(\d+)/i,
+                /doi\.org\/10\.5281\/zenodo\.(\d+)/i
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match) {
+                    return match[1];
+                }
+            }
+            
+            // URLに数字のみが含まれている場合
+            const numberMatch = url.match(/(\d{6,})/);
+            if (numberMatch) {
+                return numberMatch[1];
+            }
+            
+            return null;
+        }
+
+        function getSelectedFileTypes() {
+            const checkboxes = document.querySelectorAll('.file-type-selector input[type="checkbox"]:checked');
+            return Array.from(checkboxes).map(cb => cb.value);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function fetchZenodoFiles() {
+            const urlInput = document.getElementById('zenodoUrl');
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            const downloadSection = document.getElementById('downloadSection');
+            
+            const inputUrl = urlInput.value.trim();
+            if (!inputUrl) {
+                status.textContent = 'URLを入力してください';
+                status.className = 'status error';
+                return;
+            }
+            
+            const recordId = extractRecordId(inputUrl);
+            if (!recordId) {
+                status.textContent = '有効なZenodo URLを入力してください';
+                status.className = 'status error';
+                return;
+            }
+            
+            const selectedTypes = getSelectedFileTypes();
+            if (selectedTypes.length === 0) {
+                status.textContent = '少なくとも1つのファイルタイプを選択してください';
+                status.className = 'status warning';
+                return;
+            }
+            
+            status.textContent = `Zenodoレコード ${recordId} からファイル情報を取得中...`;
+            status.className = 'status';
+            
+            try {
+                const response = await fetch(`https://zenodo.org/api/records/${recordId}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`レコード ${recordId} が見つかりません`);
+                    }
+                    throw new Error(`HTTPエラー: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Zenodo response:', data);
+                
+                if (!data.files || !Array.isArray(data.files)) {
+                    throw new Error('ファイル情報が見つかりません');
+                }
+                
+                // 選択されたタイプの音声ファイルを抽出してソート
+                const audioFiles = data.files
+                    .filter(file => {
+                        return selectedTypes.some(type => file.key.toLowerCase().endsWith(type));
+                    })
+                    .sort((a, b) => a.key.localeCompare(b.key));
+                
+                if (audioFiles.length === 0) {
+                    throw new Error('選択されたタイプの音声ファイルが見つかりません');
+                }
+                
+                // URLリストを生成
+                urlList = [];
+                fileData = [];
+                
+                audioFiles.forEach(file => {
+                    const downloadUrl = `https://zenodo.org/records/${recordId}/files/${file.key}?download=1`;
+                    urlList.push(downloadUrl);
+                    fileData.push({
+                        name: file.key,
+                        url: downloadUrl,
+                        size: file.size
+                    });
+                });
+                
+                // 結果を表示
+                displayResults();
+                generateDownloadScripts(recordId);
+                
+                status.textContent = `${urlList.length}個の音声ファイルが見つかりました`;
+                status.className = 'status success';
+                results.style.display = 'block';
+                downloadSection.style.display = 'block';
+                
+            } catch (error) {
+                console.error('エラー:', error);
+                status.textContent = `エラー: ${error.message}`;
+                status.className = 'status error';
+                results.style.display = 'none';
+                downloadSection.style.display = 'none';
+            }
+        }
+
+        function displayResults() {
+            // ファイルリスト表示
+            const fileListElement = document.getElementById('fileList');
+            fileListElement.innerHTML = '';
+            
+            fileData.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${formatFileSize(file.size)}</span>
+                `;
+                fileListElement.appendChild(fileItem);
+            });
+            
+            // URLリスト表示
+            const urlListElement = document.getElementById('urlList');
+            urlListElement.textContent = urlList.join('\n');
+        }
+
+        function generateDownloadScripts(recordId) {
+            // wgetスクリプト
+            const wgetCommands = fileData.map(file => 
+                `wget -O "${file.name}" "${file.url}"`
+            ).join('\n');
+            
+            const wgetScript = `#!/bin/bash
+# Zenodo音声ファイル一括ダウンロードスクリプト
+# Record ID: ${recordId}
+# 使い方: このスクリプトを保存して実行権限を付与
+# chmod +x download_zenodo_${recordId}.sh
+# ./download_zenodo_${recordId}.sh
+
+mkdir -p zenodo_${recordId}_audio
+cd zenodo_${recordId}_audio
+
+echo "ダウンロード開始: ${fileData.length}個のファイル"
+
+${wgetCommands}
+
+echo "ダウンロード完了！"`;
+            
+            document.getElementById('wgetScript').textContent = wgetScript;
+            
+            // PowerShellスクリプト
+            const powershellCommands = fileData.map(file => 
+                `Invoke-WebRequest -Uri "${file.url}" -OutFile "${file.name}"`
+            ).join('\n');
+            
+            const powershellScript = `# Zenodo音声ファイル一括ダウンロードスクリプト
+# Record ID: ${recordId}
+# 使い方: PowerShellで実行
+# 保存して .ps1 ファイルとして実行
+
+$recordId = "${recordId}"
+$folderName = "zenodo_${recordId}_audio"
+
+New-Item -ItemType Directory -Force -Path $folderName
+Set-Location $folderName
+
+Write-Host "ダウンロード開始: ${fileData.length}個のファイル"
+
+${powershellCommands}
+
+Write-Host "ダウンロード完了！"`;
+            
+            document.getElementById('powershellScript').textContent = powershellScript;
+        }
+
+        function copyToClipboard() {
+            const urlListElement = document.getElementById('urlList');
+            navigator.clipboard.writeText(urlListElement.textContent)
+                .then(() => {
+                    alert('URLリストをクリップボードにコピーしました！');
+                })
+                .catch(err => {
+                    console.error('コピーに失敗しました:', err);
+                    alert('コピーに失敗しました。手動で選択してコピーしてください。');
+                });
+        }
+
+        function copyWgetScript() {
+            const script = document.getElementById('wgetScript').textContent;
+            navigator.clipboard.writeText(script)
+                .then(() => {
+                    alert('wgetスクリプトをクリップボードにコピーしました！');
+                })
+                .catch(err => {
+                    console.error('コピーに失敗しました:', err);
+                    alert('コピーに失敗しました。手動で選択してコピーしてください。');
+                });
+        }
+
+        function copyPowerShellScript() {
+            const script = document.getElementById('powershellScript').textContent;
+            navigator.clipboard.writeText(script)
+                .then(() => {
+                    alert('PowerShellスクリプトをクリップボードにコピーしました！');
+                })
+                .catch(err => {
+                    console.error('コピーに失敗しました:', err);
+                    alert('コピーに失敗しました。手動で選択してコピーしてください。');
+                });
+        }
+
+        // Enterキーでも実行できるように
+        document.getElementById('zenodoUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                fetchZenodoFiles();
+            }
+        });
+
+        // デバッグ用：コンソールでも確認できるようにする
+        window.getUrlList = () => urlList;
+        window.getFileData = () => fileData;
+    </script>
+</body>
+</html>
